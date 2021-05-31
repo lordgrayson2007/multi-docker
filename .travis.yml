@@ -1,0 +1,33 @@
+sudo: required
+services:
+  - docker
+
+before_install:
+  - docker build -t lordgrayson2007/react-test -f ./client/Dockerfile.dev ./client 
+
+script:
+  - docker run -e CI=true lordgrayson2007/react-test npm test
+
+after_success:
+  - docker build -t lordgrayson2007/multi-client ./client
+  - docker build -t lordgrayson2007/multi-nginx ./nginx
+  - docker build -t lordgrayson2007/multi-server ./server
+  - docker build -t lordgrayson2007/multi-worker ./worker
+  #login in to the docker CLI
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin 
+ # Push images to Docker Hub Personal account
+  - docker push lordgrayson2007/multi-client
+  - docker push lordgrayson2007/multi-nginx
+  - docker push lordgrayson2007/multi-server
+  - docker push lordgrayson2007/multi-worker
+deploy:
+  provider: elasticbeanstalk
+  region: "us-west-2"
+  app: "multi-docker"
+  env: "Multidocker-env"
+  bucket_name: "elasticbeanstalk-us-west-2-115749952213"
+  bucket_path: "docker-multi"
+  on:
+    branch: master
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_KEY
